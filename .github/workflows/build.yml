@@ -23,7 +23,7 @@ jobs:
               run: |
                   curl -o export-v8.diff -L https://raw.githubusercontent.com/IceBlcokMC/build-node/refs/heads/main/export-v8.diff
                   ls -la
-                  git apply ${{ github.workspace }}/export-v8.diff
+                  patch -p1 < export-v8.diff
 
             - name: Install Python3.11
               run: |
