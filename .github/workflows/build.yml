@@ -22,7 +22,9 @@ jobs:
                   ref: "v23.5.0"
 
             - name: Apply patch
-              run: git apply ${{ github.workspace }}/export-v8.diff
+              run: |
+                ls -la
+                git apply ${{ github.workspace }}/export-v8.diff
 
             - name: Install Python3.11
               run: |
