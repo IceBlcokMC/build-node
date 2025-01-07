@@ -1,0 +1,64 @@
+name: Build Node.js
+
+on:
+    workflow_dispatch:
+
+env:
+    LLVM_VERSION: 15
+
+jobs:
+    build:
+        name: Build Node.js(Linux)
+        runs-on: ubuntu-22.04
+
+        steps:
+            - uses: actions/checkout@v3
+
+            - name: Checkout Node.js source
+              uses: actions/checkout@v3
+              with:
+                  fetch-depth: 1
+                  repository: nodejs/node
+                  ref: "v23.5.0"
+
+            - name: Apply patch
+              run: git apply ${{ github.workspace }}/export-v8.diff
+
+            - name: Install Python3.11
+              run: |
+                  sudo add-apt-repository ppa:deadsnakes/ppa
+                  sudo apt install python3.11
+                  sudo python3.11 --version
+                  sudo apt install python3.11-full
+                  sudo apt install python3-pip
+                  which python3.11
+                  sudo update-alternatives --install /usr/bin/python python /usr/bin/python3.11 9
+                  sudo update-alternatives --config python
+                  python --version
+
+            - name: Set up Clang
+              run: |
+                  sudo apt-get update -y -q
+                  sudo apt-get install -y -q lsb-release wget software-properties-common gnupg
+                  sudo wget https://apt.llvm.org/llvm.sh
+                  sudo chmod +x llvm.sh
+                  sudo ./llvm.sh ${{env.LLVM_VERSION}}
+                  sudo apt-get install -y -q libc++-${{env.LLVM_VERSION}}-dev libc++abi-${{env.LLVM_VERSION}}-dev
+                  sudo update-alternatives --install /usr/bin/cc cc /usr/bin/clang-${{env.LLVM_VERSION}} 100
+                  sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-${{env.LLVM_VERSION}} 100
+                  sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-${{env.LLVM_VERSION}} 100
+                  sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-${{env.LLVM_VERSION}} 100
+                  sudo update-alternatives --install /usr/bin/llvm-cov llvm-cov /usr/bin/llvm-cov-${{env.LLVM_VERSION}} 100
+                  sudo update-alternatives --install /usr/bin/ld ld /usr/bin/ld.lld-${{env.LLVM_VERSION}} 100
+
+            - name: Configure build
+              run: ./configure --shared
+
+            - name: Build Node.js
+              run: make -j$(nproc) CXX=clang++ CC=clang
+
+            - name: Upload build artifacts
+              uses: actions/upload-artifact@v3
+              with:
+                  name: nodejs-out
+                  path: out/
