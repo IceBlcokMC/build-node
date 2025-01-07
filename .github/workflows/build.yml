@@ -12,8 +12,6 @@ jobs:
         runs-on: ubuntu-22.04
 
         steps:
-            - uses: actions/checkout@v3
-
             - name: Checkout Node.js source
               uses: actions/checkout@v3
               with:
@@ -23,8 +21,9 @@ jobs:
 
             - name: Apply patch
               run: |
-                ls -la
-                git apply ${{ github.workspace }}/export-v8.diff
+                  curl -o export-v8.diff -L https://raw.githubusercontent.com/IceBlcokMC/build-node/refs/heads/main/export-v8.diff
+                  ls -la
+                  git apply ${{ github.workspace }}/export-v8.diff
 
             - name: Install Python3.11
               run: |
