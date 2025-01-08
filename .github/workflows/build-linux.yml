@@ -1,10 +1,12 @@
-name: Build Node.js
+name: Build Node.js(Linux)
 
 on:
     workflow_dispatch:
 
 env:
     LLVM_VERSION: 15
+    NODE_VERSION: 22.12.0
+    V8_PATCH: v8-export.diff
 
 jobs:
     build:
@@ -17,13 +19,12 @@ jobs:
               with:
                   fetch-depth: 1
                   repository: nodejs/node
-                  ref: "v23.5.0"
+                  ref: "v${{env.NODE_VERSION}}"
 
             - name: Apply patch
               run: |
-                  curl -o export-v8.diff -L https://raw.githubusercontent.com/IceBlcokMC/build-node/refs/heads/main/export-v8.diff
-                  ls -la
-                  patch -p1 < export-v8.diff
+                  curl -o ${{env.V8_PATCH}} -L https://raw.githubusercontent.com/IceBlcokMC/build-node/refs/heads/main/${{env.V8_PATCH}}
+                  git apply ${{env.V8_PATCH}}
 
             - name: Install Python3.11
               run: |
@@ -51,15 +52,24 @@ jobs:
                   sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-${{env.LLVM_VERSION}} 100
                   sudo update-alternatives --install /usr/bin/llvm-cov llvm-cov /usr/bin/llvm-cov-${{env.LLVM_VERSION}} 100
                   sudo update-alternatives --install /usr/bin/ld ld /usr/bin/ld.lld-${{env.LLVM_VERSION}} 100
+                  export CC=clang
+                  export CXX=clang++
+                  export CXXFLAGS="-stdlib=libc++"
+                  export LDFLAGS="-stdlib=libc++"
+
+            - name: Install Ninja
+              run: sudo apt-get install -y -q ninja-build
 
             - name: Configure build
-              run: ./configure --shared
+              run: ./configure --ninja --shared --enable-static --without-npm --without-corepack --without-inspector
 
             - name: Build Node.js
-              run: make -j$(nproc) CXX=clang++ CC=clang
+              run: make -j$(nproc)
 
             - name: Upload build artifacts
               uses: actions/upload-artifact@v3
               with:
                   name: nodejs-out
-                  path: out/
+                  path: |-
+                    out/Release/node
+                    out/Release/lib/libnode.so.*
